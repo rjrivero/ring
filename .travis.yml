@@ -12,7 +12,9 @@ env:
     - GO111MODULE=on
 notifications:
   email: false
+before_install:
+  - go get github.com/mattn/goveralls
 script:
   - go build
   - go test -coverpkg ./... ./...
-  
+  - $GOPATH/bin/goveralls -service=travis-ci
