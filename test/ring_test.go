@@ -99,7 +99,7 @@ func ringMetrics(t *testing.T, r ring.Ring, ringHead, ringLen, ringSize int) {
 	if rCap := r.Cap(); rCap != ringSize {
 		t.Errorf("Size should be %d, got %d", ringSize, rCap)
 	}
-	full, some := false, false
+	var full, some bool
 	switch {
 	case ringLen == 0:
 		full, some = false, false
