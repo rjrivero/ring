@@ -52,7 +52,7 @@ func ringTest(t *testing.T, ringSize int, pushPops []int) {
 }
 
 // Check ring metrics against expectations
-func ringMetrics(t *testing.T, r ring.Ring, head, ringLen, ringSize int) {
+func ringMetrics(t *testing.T, r ring.Ring, ringHead, ringLen, ringSize int) {
 	if rLen := r.Len(); rLen != ringLen {
 		t.Errorf("Length should be %d, got %d", ringLen, rLen)
 	}
@@ -69,9 +69,14 @@ func ringMetrics(t *testing.T, r ring.Ring, head, ringLen, ringSize int) {
 		if pos := r.Pop(); pos != -1 {
 			t.Errorf("Empty Pop should yield -1, got %d", pos)
 		}
+	} else if head := r.Head(); head != ringHead {
+		t.Errorf("Head should be %d, got %d", ringHead, head)
+	}
+	if t.Failed() {
+		return
 	}
 	save := r
-	iterMetrics(t, r.Iter(), head, ringLen, ringSize)
+	iterMetrics(t, r.Iter(), ringHead, ringLen, ringSize)
 	if r != save {
 		t.Error("Iterator should not modify ring")
 	}
@@ -111,12 +116,12 @@ func TestRing(t *testing.T) {
 		wrap := (size * 3) / 2
 		half := (size / 2) + 1
 		tests := []test{
-			test{label: "Empty ring", pushPops: []int{0}},
-			test{label: "Full ring", pushPops: []int{size}},
-			test{label: "Wrap ring", pushPops: []int{wrap}},
-			test{label: "Deplete ring", pushPops: []int{size, size}},
-			test{label: "Pop some", pushPops: []int{size - 2, 2}},
-			test{label: "Invert", pushPops: []int{half, half - 1, half + 1}},
+			{label: "Empty ring", pushPops: []int{0}},
+			{label: "Full ring", pushPops: []int{size}},
+			{label: "Wrap ring", pushPops: []int{wrap}},
+			{label: "Deplete ring", pushPops: []int{size, size}},
+			{label: "Pop some", pushPops: []int{size - 2, 2}},
+			{label: "Invert", pushPops: []int{half, half - 1, half + 1}},
 		}
 		for _, current := range tests {
 			t.Run(fmt.Sprintf("%s [size %d]", current.label, size), func(t *testing.T) {

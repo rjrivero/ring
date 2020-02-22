@@ -1,5 +1,6 @@
 # Package Ring
 
+[![Go Report](https://goreportcard.com/badge/github.com/rjrivero/ring)](https://goreportcard.com/badge/github.com/rjrivero/git)
 [![Build Status](https://travis-ci.org/rjrivero/ring.svg?branch=master)](https://travis-ci.org/rjrivero/ring)
 [![Coverage Status](https://coveralls.io/repos/github/rjrivero/ring/badge.svg?branch=master)](https://coveralls.io/github/rjrivero/ring?branch=master)
 
