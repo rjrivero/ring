@@ -69,6 +69,9 @@ func ringMetrics(t *testing.T, r ring.Ring, ringHead, ringLen, ringSize int) {
 		if pos := r.Pop(); pos != -1 {
 			t.Errorf("Empty Pop should yield -1, got %d", pos)
 		}
+		if pos := r.Head(); pos != -1 {
+			t.Errorf("Empty Head should yield -1, got %d", pos)
+		}
 	} else if head := r.Head(); head != ringHead {
 		t.Errorf("Head should be %d, got %d", ringHead, head)
 	}

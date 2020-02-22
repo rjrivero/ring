@@ -26,7 +26,12 @@ func (r *Ring) Push() int {
 		r.tail = 0
 	}
 	if r.tail == r.head {
-		// Use r.head == -1 as 'full' flag
+		// The queue became full. As long as it remains full, the head
+		// and the tail will point to the same position.
+		// However, r.head == r.tail is the empty condition,
+		// so we need some way to tell the queue is full. We settled on:
+		// - Empty queue: r.head == r.tail
+		// - Full queue: r.head = -1, r.tail doubles as both head and tail.
 		r.head = -1
 	}
 	return pos
@@ -73,10 +78,14 @@ func (r Ring) Full() bool {
 
 // Head returns the current head of the Queue
 func (r Ring) Head() int {
-	if r.head < 0 {
+	switch {
+	case r.head < 0:
 		return r.tail
+	case r.head == r.tail:
+		return -1
+	default:
+		return r.head
 	}
-	return r.head
 }
 
 // Iter builds an Iterator.
