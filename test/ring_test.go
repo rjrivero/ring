@@ -103,6 +103,12 @@ func ringMetrics(t *testing.T, r ring.Ring, ringHead, ringLen, ringSize int) {
 	switch {
 	case ringLen == 0:
 		full, some = false, false
+		if pos := r.Pop(); pos != -1 {
+			t.Errorf("Pop should be -1, got %d", pos)
+		}
+		if pos := r.PopFront(); pos != -1 {
+			t.Errorf("PopFront should be -1, got %d", pos)
+		}
 	case ringLen == ringSize:
 		full, some = true, true
 	default:
@@ -121,7 +127,7 @@ func ringMetrics(t *testing.T, r ring.Ring, ringHead, ringLen, ringSize int) {
 	fifoMetrics(t, r, ringHead, ringLen, ringSize)
 	lifoMetrics(t, r, ringHead, ringLen, ringSize)
 	if r != save {
-		t.Error("Iterator should not modify ring")
+		t.Error("Ring should be copied by value")
 	}
 }
 
