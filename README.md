@@ -18,7 +18,7 @@ type MyRing struct {
     Buf []MyType
 }
 
-func New(size int) MyRing {
+func NewRing(size int) MyRing {
     return MyRing{
         ring.Ring: ring.New(size),
         Buf: make([]MyType, size),
@@ -29,7 +29,7 @@ func New(size int) MyRing {
 You can use your structure as a LIFO Stack with `Push` and `Pop`:
 
 ```go
-stack := MyRing(16)
+stack := NewRing(16)
 
 stack.Buf[stack.Push()] = value1
 stack.Buf[stack.Push()] = value2
@@ -45,10 +45,10 @@ for iter := stack.Ring; iter.Some(); {
 }
 ```
 
-To use your structure as a Fifo Queue, just replace `Pop` with `PopFront`:
+To use your structure as a FIFO Queue, just replace `Pop` with `PopFront`:
 
 ```go
-queue := MyRing(16)
+queue := NewRing(16)
 
 queue.Buf[queue.Push()] = value1
 queue.Buf[queue.Push()] = value2
