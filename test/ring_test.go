@@ -7,279 +7,121 @@ import (
 	"github.com/rjrivero/ring"
 )
 
-func TestEmpty(t *testing.T) {
-	sizes := []int{5, 7, 11} // try a few sizes, just in case
-	for _, size := range sizes {
-		size := size
-		t.Run(fmt.Sprintf("Empty ring of size %d", size), func(t *testing.T) {
-			ring := ring.NewRing(size)
-			if ring.Len() != 0 {
-				t.Errorf("Length should be 0")
+// test the ring by pushing and popping alternatively
+func ringTest(t *testing.T, ringSize int, pushPops []int) {
+	ring := ring.NewRing(ringSize)
+	head, tail, size := 0, 0, 0
+	push := func(times int) {
+		for i := 0; i < times; i++ {
+			if pos := ring.Push(); pos != tail {
+				t.Errorf("tail at repetition %d should be %d, got %d", i, tail, pos)
+				return
 			}
-			if ring.Cap() != size {
-				t.Errorf("Size should be %d", size)
+			tail = (tail + 1) % ringSize
+			size++
+			if size >= ringSize {
+				// We are dragging head alongside
+				size = ringSize
+				head = tail
 			}
-			if ring.Full() {
-				t.Error("Full should be false")
+		}
+	}
+	pop := func(times int) {
+		for i := 0; i < times; i++ {
+			if pos := ring.Pop(); pos != head {
+				t.Errorf("head at repetition %d should be %d, got %d", i, head, pos)
+				return
 			}
-			if pos := ring.Pop(); pos != -1 {
-				t.Errorf("Empty Pop should yield -1, got %d", pos)
-			}
-			save := ring
-			iter := ring.Iter()
-			if iter.Next() {
-				t.Error("Iterator should be exhausted")
-			}
-			if ring != save {
-				t.Error("Iterator should not modify ring")
-			}
-		})
+			head = (head + 1) % ringSize
+			size--
+		}
+	}
+	// Alternate pushing and popping
+	actions := []func(int){push, pop}
+	for index, times := range pushPops {
+		action := actions[index%2]
+		action(times)
+		if !t.Failed() {
+			ringMetrics(t, ring, head, size, ringSize)
+		}
+		if t.Failed() {
+			t.Logf("At push/pop %d", index)
+			return
+		}
 	}
 }
 
-func TestFull(t *testing.T) {
-	sizes := []int{5, 7, 11} // try a few sizes, just in case
-	for _, size := range sizes {
-		size := size
-		t.Run(fmt.Sprintf("Full ring of size %d", size), func(t *testing.T) {
-			ring := ring.NewRing(size)
-			for i := 0; i < size; i++ {
-				if pos := ring.Push(); pos != i {
-					t.Errorf("Index after %d pushes should be %d, got %d", i+1, i, pos)
-					t.FailNow()
-				}
-			}
-			if ring.Len() != size {
-				t.Errorf("Length should be %d", size)
-			}
-			if ring.Cap() != size {
-				t.Errorf("Size should be %d", size)
-			}
-			if !ring.Full() {
-				t.Error("Full should be true")
-			}
-			save := ring
-			iter := ring.Iter()
-			for i := 0; i < size; i++ {
-				if !iter.Next() {
-					t.Error("Iterator should not be empty")
-					t.FailNow()
-				}
-				if pos := iter.Pos(); pos != i {
-					t.Errorf("Iteration number %d should yield %d, got %d", i, i, pos)
-					t.FailNow()
-				}
-			}
-			if iter.Next() {
-				t.Error("Iterator should be exhausted")
-			}
-			if ring != save {
-				t.Error("Iterator should not modify ring")
-			}
-		})
+// Check ring metrics against expectations
+func ringMetrics(t *testing.T, r ring.Ring, head, ringLen, ringSize int) {
+	if rLen := r.Len(); rLen != ringLen {
+		t.Errorf("Length should be %d, got %d", ringLen, rLen)
+	}
+	if rCap := r.Cap(); rCap != ringSize {
+		t.Errorf("Size should be %d, got %d", ringSize, rCap)
+	}
+	if full := r.Full(); ringLen == ringSize && !full {
+		t.Errorf("Full should be true, got %t", full)
+	}
+	if full := r.Full(); ringLen != ringSize && full {
+		t.Errorf("Full should be false, got %t", full)
+	}
+	if ringLen == 0 {
+		if pos := r.Pop(); pos != -1 {
+			t.Errorf("Empty Pop should yield -1, got %d", pos)
+		}
+	}
+	save := r
+	iterMetrics(t, r.Iter(), head, ringLen, ringSize)
+	if r != save {
+		t.Error("Iterator should not modify ring")
 	}
 }
 
-func TestWrap(t *testing.T) {
-	sizes := []int{5, 7, 11} // try a few sizes, just in case
-	for _, size := range sizes {
-		size := size
-		t.Run(fmt.Sprintf("Wrap ring of size %d around", size), func(t *testing.T) {
-			ring := ring.NewRing(size)
-			wrap := size * 3 / 2
-			for i := 0; i < wrap; i++ {
-				if pos := ring.Push(); pos != i%size {
-					t.Errorf("Index after %d pushes should be %d, got %d", i+1, i%size, pos)
-					t.FailNow()
-				}
-			}
-			if ring.Len() != size {
-				t.Errorf("Length should be %d", size)
-			}
-			if ring.Cap() != size {
-				t.Errorf("Size should be %d", size)
-			}
-			if !ring.Full() {
-				t.Error("Full should be true")
-			}
-			save := ring
-			iter := ring.Iter()
-			wrap = wrap % size
-			for i := 0; i < size; i++ {
-				if !iter.Next() {
-					t.Error("Iterator should not be empty")
-					t.FailNow()
-				}
-				if pos := iter.Pos(); pos != wrap%size {
-					t.Errorf("Iteration number %d should yield %d, got %d", i, wrap, pos)
-					t.FailNow()
-				}
-				wrap++
-			}
-			if iter.Next() {
-				t.Error("Iterator should be exhausted")
-			}
-			if ring != save {
-				t.Error("Iterator should not modify ring")
-			}
-		})
+// Check iterator metrics against expectations
+func iterMetrics(t *testing.T, iter ring.Iterator, head, ringLen, ringSize int) {
+	if ringLen <= 0 {
+		if iter.Next() {
+			t.Errorf("Iterator should be empty")
+		}
+		return
+	}
+	for i := 0; i < ringLen; i++ {
+		if !iter.Next() {
+			t.Error("Iterator should not be empty")
+			return
+		}
+		expect := (head + i) % ringSize
+		if pos := iter.Pos(); pos != expect {
+			t.Errorf("Iteration number %d should yield %d, got %d", i, expect, pos)
+			return
+		}
+	}
+	if iter.Next() {
+		t.Error("Iterator should be exhausted")
 	}
 }
 
-func TestDeplete(t *testing.T) {
-	sizes := []int{5, 7, 11} // try a few sizes, just in case
-	for _, size := range sizes {
-		size := size
-		t.Run(fmt.Sprintf("Deplete ring of size %d", size), func(t *testing.T) {
-			ring := ring.NewRing(size)
-			wrap := size * 3 / 2
-			for i := 0; i < wrap; i++ {
-				if pos := ring.Push(); pos != i%size {
-					t.Errorf("Index after %d pushes should be %d, got %d", i+1, i%size, pos)
-					t.FailNow()
-				}
-			}
-			wrap = wrap % size
-			for i := 0; i < size; i++ {
-				if pos := ring.Pop(); pos != wrap%size {
-					t.Errorf("Index after %d pops should be %d, got %d", i+1, wrap%size, pos)
-					t.FailNow()
-				}
-				wrap++
-			}
-			if pos := ring.Pop(); pos != -1 {
-				t.Errorf("Pop once depleted should be -1, got %d", pos)
-			}
-			if ring.Len() != 0 {
-				t.Errorf("Length should be %d", size)
-			}
-			if ring.Cap() != size {
-				t.Errorf("Size should be %d", size)
-			}
-			if ring.Full() {
-				t.Error("Full should be false")
-			}
-			save := ring
-			iter := ring.Iter()
-			if iter.Next() {
-				t.Error("Iterator should be exhausted")
-			}
-			if ring != save {
-				t.Error("Iterator should not modify ring")
-			}
-		})
+func TestRing(t *testing.T) {
+	type test struct {
+		label    string
+		pushPops []int
 	}
-}
-
-func TestPopSome(t *testing.T) {
 	sizes := []int{5, 7, 11} // try a few sizes, just in case
 	for _, size := range sizes {
-		size := size
-		t.Run(fmt.Sprintf("Pop some items from ring of size %d", size), func(t *testing.T) {
-			ring := ring.NewRing(size)
-			gapTail := 2
-			for i := 0; i < size-gapTail; i++ {
-				if pos := ring.Push(); pos != i%size {
-					t.Errorf("Index after %d pushes should be %d, got %d", i+1, i%size, pos)
-					t.FailNow()
-				}
-			}
-			gapHead := 2
-			for i := 0; i < gapHead; i++ {
-				if pos := ring.Pop(); pos != i {
-					t.Errorf("Index after %d pops should be %d, got %d", i+1, i, pos)
-					t.FailNow()
-				}
-			}
-			gapLen := size - gapHead - gapTail
-			if ringLen := ring.Len(); ringLen != gapLen {
-				t.Errorf("Length should be %d, got %d", gapLen, ringLen)
-			}
-			if ring.Cap() != size {
-				t.Errorf("Size should be %d", size)
-			}
-			if ring.Full() {
-				t.Error("Full should be false")
-			}
-			save := ring
-			iter := ring.Iter()
-			for i := 0; i < gapLen; i++ {
-				if !iter.Next() {
-					t.Error("Iterator should not be empty")
-				}
-				if pos := iter.Pos(); pos != gapHead+i {
-					t.Errorf("Iteration number %d should yield %d, got %d", i, gapHead+i, pos)
-					t.FailNow()
-				}
-			}
-			if iter.Next() {
-				t.Error("Iterator should be exhausted")
-			}
-			if ring != save {
-				t.Error("Iterator should not modify ring")
-			}
-		})
-	}
-}
-
-func TestInvert(t *testing.T) {
-	sizes := []int{5, 7, 11} // try a few sizes, just in case
-	for _, size := range sizes {
-		size := size
-		t.Run(fmt.Sprintf("Invert ring of size %d", size), func(t *testing.T) {
-			ring := ring.NewRing(size)
-			half := size/2 + 1
-			for i := 0; i < half; i++ {
-				if pos := ring.Push(); pos != i {
-					t.Errorf("Index after %d pushes should be %d, got %d", i+1, i, pos)
-					t.FailNow()
-				}
-			}
-			for i := 0; i < half-1; i++ {
-				if pos := ring.Pop(); pos != i {
-					t.Errorf("Index after %d pops should be %d, got %d", i+1, i, pos)
-					t.FailNow()
-				}
-			}
-			for i := 0; i < half+1; i++ {
-				if pos := ring.Push(); pos != (half+i)%size {
-					t.Errorf("Index after %d pops should be %d, got %d", i+1, (half + i), pos)
-					t.FailNow()
-				}
-			}
-			gapLen := half + 2
-			if ringLen := ring.Len(); ringLen != gapLen {
-				t.Errorf("Length should be %d, got %d", gapLen, ringLen)
-			}
-			if ring.Cap() != size {
-				t.Errorf("Size should be %d", size)
-			}
-			// When size == 5, the process above will fill the buffer
-			if gapLen == ring.Cap() {
-				if !ring.Full() {
-					t.Error("Full should be true")
-				}
-			} else if ring.Full() {
-				t.Error("Full should be false")
-			}
-			save := ring
-			iter := ring.Iter()
-			half--
-			for i := 0; i < gapLen; i++ {
-				if !iter.Next() {
-					t.Error("Iterator should not be empty")
-				}
-				if pos := iter.Pos(); pos != (half+i)%size {
-					t.Errorf("Iteration number %d should yield %d, got %d", i, (half+i)%size, pos)
-					t.FailNow()
-				}
-			}
-			if iter.Next() {
-				t.Error("Iterator should be exhausted")
-			}
-			if ring != save {
-				t.Error("Iterator should not modify ring")
-			}
-		})
+		wrap := (size * 3) / 2
+		half := (size / 2) + 1
+		tests := []test{
+			test{label: "Empty ring", pushPops: []int{0}},
+			test{label: "Full ring", pushPops: []int{size}},
+			test{label: "Wrap ring", pushPops: []int{wrap}},
+			test{label: "Deplete ring", pushPops: []int{size, size}},
+			test{label: "Pop some", pushPops: []int{size - 2, 2}},
+			test{label: "Invert", pushPops: []int{half, half - 1, half + 1}},
+		}
+		for _, current := range tests {
+			t.Run(fmt.Sprintf("%s [size %d]", current.label, size), func(t *testing.T) {
+				ringTest(t, size, current.pushPops)
+			})
+		}
 	}
 }
