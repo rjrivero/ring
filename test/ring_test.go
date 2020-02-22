@@ -9,7 +9,7 @@ import (
 
 // test the ring by pushing and popping alternatively
 func ringTest(t *testing.T, ringSize int, pushPops []int) {
-	ring := ring.NewRing(ringSize)
+	ring := ring.New(ringSize)
 	head, tail, size := 0, 0, 0
 	push := func(times int) {
 		for i := 0; i < times; i++ {

@@ -8,8 +8,8 @@ type Ring struct {
 	head, tail int
 }
 
-// NewRing initializes a Ring with the proper size
-func NewRing(size int) Ring {
+// New initializes a Ring with the proper size
+func New(size int) Ring {
 	return Ring{size: size}
 }
 
