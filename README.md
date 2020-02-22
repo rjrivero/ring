@@ -31,9 +31,9 @@ You can use your structure as a LIFO Stack with `Push` and `Pop`:
 ```go
 stack := MyRing(16)
 
-stack.Buf[m.Push()] = value1
-stack.Buf[m.Push()] = value2
-v := stack.Buf[m.Pop()] // v will be value2
+stack.Buf[stack.Push()] = value1
+stack.Buf[stack.Push()] = value2
+v := stack.Buf[stack.Pop()] // v will be value2
 ```
 
 And iterate it:
@@ -50,9 +50,9 @@ To use your structure as a Fifo Queue, just replace `Pop` with `PopFront`:
 ```go
 queue := MyRing(16)
 
-queue.Buf[m.Push()] = value1
-queue.Buf[m.Push()] = value2
-v := queue.Buf[m.PopFront()] // v will be value1
+queue.Buf[queue.Push()] = value1
+queue.Buf[queue.Push()] = value2
+v := queue.Buf[queue.PopFront()] // v will be value1
 
 for iter := queue.Ring; iter.Some(); {
     v := queue.Buf[iter.PopFront()]
