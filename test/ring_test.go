@@ -7,45 +7,85 @@ import (
 	"github.com/rjrivero/ring"
 )
 
+// Cursor represents a bounded-size segment inside an infinite buffer
+type cursor struct {
+	base, len, cap int
+}
+
+// modSize returns mod(value, cursor.cap)
+func (c cursor) modCap(value int) int {
+	for value < 0 {
+		value += c.cap
+	}
+	return value % c.cap
+}
+
+// Head of the cursor
+func (c cursor) head() int {
+	return c.modCap(c.base)
+}
+
+// last member of the segment
+func (c cursor) last() int {
+	return c.modCap(c.base + c.len - 1)
+}
+
+// one past the last member of the segment
+func (c cursor) tail() int {
+	return c.modCap(c.base + c.len)
+}
+
+// Push to the ring the given number of times
+func (c *cursor) Push(r *ring.Ring) error {
+	if tail, pos := c.tail(), r.Push(); tail != pos {
+		return fmt.Errorf("tail should be %d, got %d", tail, pos)
+	}
+	if c.len < c.cap {
+		c.len++
+	} else {
+		c.base++
+	}
+	return nil
+}
+
+// Pop from the ring the given number of times
+func (c *cursor) Pop(r *ring.Ring) error {
+	if last, pos := c.last(), r.Pop(); last != pos {
+		return fmt.Errorf("tail should be %d, got %d", last, pos)
+	}
+	c.len--
+	return nil
+}
+
+// PopFront from the ring the given number of times
+func (c *cursor) PopFront(r *ring.Ring) error {
+	if head, pos := c.head(), r.PopFront(); head != pos {
+		return fmt.Errorf("head should be %d, got %d", head, pos)
+	}
+	c.base++
+	c.len--
+	return nil
+}
+
 // test the ring by pushing and popping alternatively
 func ringTest(t *testing.T, ringSize int, pushPops []int) {
-	ring := ring.New(ringSize)
-	head, tail, size := 0, 0, 0
-	push := func(times int) {
-		for i := 0; i < times; i++ {
-			if pos := ring.Push(); pos != tail {
-				t.Errorf("tail at repetition %d should be %d, got %d", i, tail, pos)
-				return
-			}
-			tail = (tail + 1) % ringSize
-			size++
-			if size >= ringSize {
-				// We are dragging head alongside
-				size = ringSize
-				head = tail
-			}
-		}
-	}
-	pop := func(times int) {
-		for i := 0; i < times; i++ {
-			if pos := ring.Pop(); pos != head {
-				t.Errorf("head at repetition %d should be %d, got %d", i, head, pos)
-				return
-			}
-			head = (head + 1) % ringSize
-			size--
-		}
-	}
-	// Alternate pushing and popping
-	actions := []func(int){push, pop}
+	c := cursor{cap: ringSize}
+	r := ring.New(ringSize)
+	// Alternate pushing, popping and poppingFront
+	actions := []func(*ring.Ring) error{c.Push, c.Pop, c.PopFront}
 	for index, times := range pushPops {
-		action := actions[index%2]
-		action(times)
+		var step int
+		for step = 0; step < times; step++ {
+			if err := actions[index%3](&r); err != nil {
+				t.Error(err)
+				break
+			}
+		}
 		if !t.Failed() {
-			ringMetrics(t, ring, head, size, ringSize)
+			ringMetrics(t, r, c.head(), c.len, ringSize)
 		}
 		if t.Failed() {
-			t.Logf("At push/pop %d", index)
+			t.Logf("At push/pop/popFront (%d, %d)", index, step)
 			return
 		}
 	}
@@ -59,53 +99,66 @@ func ringMetrics(t *testing.T, r ring.Ring, ringHead, ringLen, ringSize int) {
 	if rCap := r.Cap(); rCap != ringSize {
 		t.Errorf("Size should be %d, got %d", ringSize, rCap)
 	}
-	if full := r.Full(); ringLen == ringSize && !full {
-		t.Errorf("Full should be true, got %t", full)
+	full, some := false, false
+	switch {
+	case ringLen == 0:
+		full, some = false, false
+	case ringLen == ringSize:
+		full, some = true, true
+	default:
+		full, some = false, true
 	}
-	if full := r.Full(); ringLen != ringSize && full {
-		t.Errorf("Full should be false, got %t", full)
+	if r.Full() != full {
+		t.Errorf("Full should be %t", full)
 	}
-	if ringLen == 0 {
-		if pos := r.Pop(); pos != -1 {
-			t.Errorf("Empty Pop should yield -1, got %d", pos)
-		}
-		if pos := r.Head(); pos != -1 {
-			t.Errorf("Empty Head should yield -1, got %d", pos)
-		}
-	} else if head := r.Head(); head != ringHead {
-		t.Errorf("Head should be %d, got %d", ringHead, head)
+	if r.Some() != some {
+		t.Errorf("Some should be %t", some)
 	}
 	if t.Failed() {
 		return
 	}
 	save := r
-	iterMetrics(t, r.Iter(), ringHead, ringLen, ringSize)
+	fifoMetrics(t, r, ringHead, ringLen, ringSize)
+	lifoMetrics(t, r, ringHead, ringLen, ringSize)
 	if r != save {
 		t.Error("Iterator should not modify ring")
 	}
 }
 
 // Check iterator metrics against expectations
-func iterMetrics(t *testing.T, iter ring.Iterator, head, ringLen, ringSize int) {
-	if ringLen <= 0 {
-		if iter.Next() {
-			t.Errorf("Iterator should be empty")
-		}
-		return
-	}
+func fifoMetrics(t *testing.T, iter ring.Ring, ringHead, ringLen, ringSize int) {
 	for i := 0; i < ringLen; i++ {
-		if !iter.Next() {
-			t.Error("Iterator should not be empty")
+		if !iter.Some() {
+			t.Errorf("Fifo should not be empty in step %d", i)
 			return
 		}
-		expect := (head + i) % ringSize
-		if pos := iter.Pos(); pos != expect {
-			t.Errorf("Iteration number %d should yield %d, got %d", i, expect, pos)
+		if pos := iter.PopFront(); pos != ringHead {
+			t.Errorf("Fifo should yield %d at step %d, got %d", ringHead, i, pos)
 			return
 		}
+		ringHead = (ringHead + 1) % ringSize
 	}
-	if iter.Next() {
-		t.Error("Iterator should be exhausted")
+	if iter.Some() {
+		t.Error("Fifo should be exhausted")
+	}
+}
+
+// Check iterator metrics against expectations
+func lifoMetrics(t *testing.T, iter ring.Ring, ringHead, ringLen, ringSize int) {
+	ringTail := (ringHead + ringLen - 1) % ringSize
+	for i := 0; i < ringLen; i++ {
+		if !iter.Some() {
+			t.Errorf("Lifo should not be empty in step %d", i)
+			return
+		}
+		if pos := iter.Pop(); pos != ringTail {
+			t.Errorf("Lifo should yield %d at step %d, got %d", ringTail, i, pos)
+			return
+		}
+		ringTail = (ringTail - 1 + ringSize) % ringSize
+	}
+	if iter.Some() {
+		t.Error("Lifo should be exhausted")
 	}
 }
 
@@ -122,9 +175,12 @@ func TestRing(t *testing.T) {
 			{label: "Empty ring", pushPops: []int{0}},
 			{label: "Full ring", pushPops: []int{size}},
 			{label: "Wrap ring", pushPops: []int{wrap}},
-			{label: "Deplete ring", pushPops: []int{size, size}},
-			{label: "Pop some", pushPops: []int{size - 2, 2}},
-			{label: "Invert", pushPops: []int{half, half - 1, half + 1}},
+			{label: "Deplete stack", pushPops: []int{size, size}},
+			{label: "Pop from stack", pushPops: []int{size - 2, 2}},
+			{label: "Invert stack", pushPops: []int{half, half - 1, 0, half + 1}},
+			{label: "Deplete queue", pushPops: []int{size, 0, size}},
+			{label: "Pop from queue", pushPops: []int{size - 2, 0, 2}},
+			{label: "Invert queue", pushPops: []int{half, 0, half - 1, half + 1}},
 		}
 		for _, current := range tests {
 			t.Run(fmt.Sprintf("%s [size %d]", current.label, size), func(t *testing.T) {

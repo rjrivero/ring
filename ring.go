@@ -1,8 +1,7 @@
-// Package ring provides support for circular queues backed
-// by fixed-size buffers.
+// Package ring provides support for circular fixed-size data structures
 package ring
 
-// Ring struct manages the indexes for a circular Ring queue.
+// Ring struct manages the indexes for a circular buffer
 type Ring struct {
 	size       int
 	head, tail int
@@ -13,16 +12,10 @@ func New(size int) Ring {
 	return Ring{size: size}
 }
 
-// Iterator supports iteration over a Ring
-type Iterator struct {
-	cursor, size, left int
-}
-
-// Push returns the tail of the queue and advances it
+// Push returns a slot at the tail of the queue.
 func (r *Ring) Push() int {
 	pos := r.tail
-	r.tail++
-	if r.tail >= r.size {
+	if r.tail++; r.tail >= r.size {
 		r.tail = 0
 	}
 	if r.tail == r.head {
@@ -37,9 +30,22 @@ func (r *Ring) Push() int {
 	return pos
 }
 
-// Pop returns the head of the queue and advances it.
-// returns -1 if the queue is empty.
+// Pop returns the tail of the ring, or -1 if empty.
 func (r *Ring) Pop() int {
+	switch {
+	case r.head < 0:
+		r.head = r.tail
+	case r.head == r.tail:
+		return -1
+	}
+	if r.tail--; r.tail < 0 {
+		r.tail = r.size - 1
+	}
+	return r.tail
+}
+
+// PopFront returns the head of the ring, or -1 if empty
+func (r *Ring) PopFront() int {
 	switch {
 	case r.head < 0: // full
 		r.head = r.tail
@@ -47,8 +53,7 @@ func (r *Ring) Pop() int {
 		return -1
 	}
 	pos := r.head
-	r.head++
-	if r.head >= r.size {
+	if r.head++; r.head >= r.size {
 		r.head = 0
 	}
 	return pos
@@ -76,43 +81,7 @@ func (r Ring) Full() bool {
 	return r.head < 0
 }
 
-// Head returns the current head of the Queue
-func (r Ring) Head() int {
-	switch {
-	case r.head < 0:
-		return r.tail
-	case r.head == r.tail:
-		return -1
-	default:
-		return r.head
-	}
-}
-
-// Iter builds an Iterator.
-// The Ring should not be changed while iterated,
-// otherwise results might be inconsistent.
-func (r Ring) Iter() Iterator {
-	return Iterator{
-		size:   r.size,
-		cursor: r.Head() - 1,
-		left:   r.Len(),
-	}
-}
-
-// Next returns true if the iterator is not exhausted
-func (r *Iterator) Next() bool {
-	if r.left <= 0 {
-		return false
-	}
-	r.left--
-	r.cursor++
-	if r.cursor >= r.size {
-		r.cursor = 0
-	}
-	return true
-}
-
-// Pos returns the current position in the queue.
-func (r Iterator) Pos() int {
-	return r.cursor
+// Some returns true if the ring is not empty
+func (r Ring) Some() bool {
+	return r.head != r.tail
 }
