@@ -20,7 +20,7 @@ type MyRing struct {
 
 func NewRing(size int) MyRing {
     return MyRing{
-        ring.Ring: ring.New(size),
+        Ring: ring.New(size),
         Buf: make([]MyType, size),
     }
 }
@@ -36,13 +36,23 @@ stack.Buf[stack.Push()] = value2
 v := stack.Buf[stack.Pop()] // v will be value2
 ```
 
-And iterate it:
+And iterate it in place:
+
+```go
+for stack.Some() {
+    v := stack.Buf[stack.Pop()]
+    // do something with v
+}
+```
+
+Or copy the ring to iterate it without modifying:
 
 ```go
 for iter := stack.Ring; iter.Some(); {
     v := stack.Buf[iter.Pop()]
     // do something with v
 }
+// stack.Ring has not been modified
 ```
 
 To use your structure as a FIFO Queue, just replace `Pop` with `PopFront`:
@@ -62,13 +72,13 @@ for iter := queue.Ring; iter.Some(); {
 
 As you see, calling `Push`, `Pop` or `Popfront` returns the index in the buffer for you to perform the actual operation (set or get) in a type-safe manner.
 
-Calling `Full` before `Push`, you can also check if there is room left in the ring, or you are evicting items. This might be useful to perform some cleanup on evicted items, e.g:
+Calling `Full` **before** `Push`, you can also check if there is room left in the ring, or you are evicting items. This might be useful to perform some cleanup on evicted items, e.g:
 
 ```go
 full := queue.Full()
 tail := queue.Push()
 if full {
-    // dispose of the current item before overwriting it, e.g.
+    // Perform any cleanup on evicted item before overwriting it, e.g.
     queue.Buf[tail].Close()
 }
 // Now you can store your new value safely
