@@ -1,19 +1,19 @@
-// Package ring provides support for circular fixed-size data structures.
-package ring
+package test
 
-// Ring struct manages the indexes for a circular buffer.
-type Ring struct {
+// ModRing is an alternate Ring implementation using MOD operator (%).
+// This implementation has been discarded because of lower performance.
+type ModRing struct {
 	size      int
 	tail, len int
 }
 
-// New initializes a Ring with the proper size
-func New(size int) Ring {
-	return Ring{size: size}
+// ModNew initializes a Ring with the proper size
+func ModNew(size int) ModRing {
+	return ModRing{size: size}
 }
 
 // Push returns a slot at the tail of the queue.
-func (r *Ring) Push() int {
+func (r *ModRing) Push() int {
 	if r.len < r.size {
 		r.len++
 	}
@@ -25,7 +25,7 @@ func (r *Ring) Push() int {
 }
 
 // Pop returns the tail of the ring, or -1 if empty.
-func (r *Ring) Pop() int {
+func (r *ModRing) Pop() int {
 	if r.len == 0 {
 		return -1
 	}
@@ -37,34 +37,31 @@ func (r *Ring) Pop() int {
 }
 
 // PopFront returns the head of the ring, or -1 if empty
-func (r *Ring) PopFront() int {
+func (r *ModRing) PopFront() int {
 	if r.len == 0 {
 		return -1
 	}
-	head := r.tail - r.len
-	if head < 0 {
-		head += r.size
-	}
+	head := (r.size + r.tail - r.len) % r.size
 	r.len--
 	return head
 }
 
 // Len returns the current size of the ring.
-func (r Ring) Len() int {
+func (r ModRing) Len() int {
 	return r.len
 }
 
 // Cap returns the ring capacity (size)
-func (r Ring) Cap() int {
+func (r ModRing) Cap() int {
 	return r.size
 }
 
 // Full returns true if ring is full
-func (r Ring) Full() bool {
+func (r ModRing) Full() bool {
 	return r.len == r.size
 }
 
 // Some returns true if the ring is not empty
-func (r Ring) Some() bool {
+func (r ModRing) Some() bool {
 	return r.len > 0
 }
