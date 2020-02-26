@@ -1,8 +1,9 @@
 # Package Ring
 
 ![GitHub](https://img.shields.io/github/license/rjrivero/ring)
+[![GoDoc](https://godoc.org/github.com/rjrivero/ring?status.svg)](https://godoc.org/github.com/rjrivero/ring)
 [![Maintainability](https://api.codeclimate.com/v1/badges/b6a4dd9540d7815ffec9/maintainability)](https://codeclimate.com/github/rjrivero/ring/maintainability)
-[![Go Report](https://goreportcard.com/badge/github.com/rjrivero/ring)](https://goreportcard.com/badge/github.com/rjrivero/git)
+[![Go Report](https://goreportcard.com/badge/github.com/rjrivero/ring)](https://goreportcard.com/report/github.com/rjrivero/ring)
 [![Build Status](https://travis-ci.org/rjrivero/ring.svg?branch=master)](https://travis-ci.org/rjrivero/ring)
 [![Coverage Status](https://coveralls.io/repos/github/rjrivero/ring/badge.svg?branch=master)](https://coveralls.io/github/rjrivero/ring?branch=master)
 
