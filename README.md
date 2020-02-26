@@ -1,7 +1,7 @@
 # Package Ring
 
 ![GitHub](https://img.shields.io/github/license/rjrivero/ring)
-[![GoDoc](https://godoc.org/github.com/rjrivero/ring?status.svg)](https://godoc.org/github.com/rjrivero/ring)
+[![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/rjrivero/ring)
 [![Maintainability](https://api.codeclimate.com/v1/badges/b6a4dd9540d7815ffec9/maintainability)](https://codeclimate.com/github/rjrivero/ring/maintainability)
 [![Go Report](https://goreportcard.com/badge/github.com/rjrivero/ring)](https://goreportcard.com/report/github.com/rjrivero/ring)
 [![Build Status](https://travis-ci.org/rjrivero/ring.svg?branch=master)](https://travis-ci.org/rjrivero/ring)
